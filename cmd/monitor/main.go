@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	address       = flag.String("address", "192.168.1.147", "camera address: 192.168.1.147, 192.168.1.147:34567")
+	address       = flag.String("address", "95.72.95.9", "camera address: 192.168.1.147, 192.168.1.147:34567")
 	name          = flag.String("name", "camera1", "name of the camera")
 	outPath       = flag.String("out", "./", "output path that video files will be kept")
 	chunkInterval = flag.Duration("chunkInterval", time.Minute*10, "time when application must create a new files")
@@ -23,6 +23,8 @@ var (
 	password      = flag.String("password", "", "password for the user")
 	retryTime     = flag.Duration("retryTime", time.Second*5, "retry to connect if problem occur")
 	debugMode     = flag.Bool("debug", false, "debug mode")
+	webRTCEnable  = flag.Bool("webrtc", true, "WebRTC enable")
+	webRTCPort    = flag.String("webrtc_port", "8083", "WebRTC port")
 )
 
 func main() {
@@ -33,6 +35,10 @@ func main() {
 		User:     *user,
 		Password: *password,
 		Debug:    *debugMode,
+	}
+
+	if *webRTCEnable {
+		go serveHTTP()
 	}
 
 	err := setupLogs()
@@ -141,11 +147,10 @@ func monitor(ctx context.Context, settings dvrip.Settings) error {
 				if err != nil {
 					log.Printf("error occurred: %v", errs)
 				}
-
 				videoFile, audioFile, err = createChunkFiles(now)
 				prevTime = now
 			}
-
+			MuxerStreamWebRTC.WriteFrame(*name, frame)
 			processFrame(frame, audioFile, videoFile)
 		case <-ctx.Done():
 			errs := closeFiles(videoFile, audioFile)

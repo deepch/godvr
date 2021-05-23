@@ -160,7 +160,6 @@ type Settings struct {
 	Password     string
 	PasswordHash string
 	Debug        bool
-
 	DialTimout   time.Duration
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
@@ -263,8 +262,10 @@ func (c *Conn) Login() error {
 		return err
 	}
 
-	resp = resp[:len(resp)-2] // skip the 0x0a and 0x00
-
+	//resp = resp[:len(resp)-2] // skip the 0x0a and 0x00
+	if len(resp) > 2 && bytes.Compare(resp[len(resp)-2:], []byte{10, 0}) == 0 {
+		resp = resp[:len(resp)-2]
+	}
 	m := map[string]interface{}{}
 	err = json.Unmarshal(resp, &m)
 	if err != nil {
@@ -546,6 +547,7 @@ func (c *Conn) reassembleBinPayload() (*Frame, error) {
 				length = frame.Length
 				meta.Width = int(frame.Width) * 8
 				meta.Height = int(frame.Height) * 8
+				meta.FPS = int(frame.FPS)
 				meta.Datetime = parseDatetime(frame.DateTime)
 			case 0x1FD:
 				// 4 bytes
